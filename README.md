@@ -37,6 +37,7 @@ from Aseba:
  - vm/vm.c
  - vm/natives.c
  - transport/buffer/vm-buffer.c
+ 
 from e-puck library:
  - a_d/advance_ad_scan/e_acc.c
  - a_d/e_ad_conv.c
@@ -58,6 +59,7 @@ from e-puck library:
  - uart/e_init_uart1.s
  - uart/e_uart1_rx_char.s
  - uart/e_uart1_tx_char.s
+ 
 then finally:
  - epuckaseba.c
 
