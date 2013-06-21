@@ -1,51 +1,59 @@
 <!DOCTYPE aesl-source>
 <network>
-    <node name="e-puck" >ontimer
-var i
-var v
 
-i = 0
-var meanV = 0
-var minV = 300
-while i &lt; 60 do
-	v = camR[i] + camG[i] + camB[i]
-	meanV = meanV + v
-	if v &lt; minV then
-		minV = v
-	end
-	i = i + 1
-end
-meanV = meanV / 60
-var threshold = (3 * meanV + minV) / 4
 
-var minPos = 0
-var minCount = 0
-var firstBlack = -1
-var lastBlack
+<!--list of global events-->
+<event size="2" name="out"/>
+
+
+<!--list of constants-->
+
+
+<!--show keywords state-->
+<keywords flag="true"/>
+
+
+<!--node e-puck0-->
+<node nodeId="1" name="e-puck0">var i
+var img[60]
+var meanV
+var minV
+var maxV
+var threshold 
+var minPos
+var minCount
+var deltaPos
+var blackCount
+
+onevent camera
+
+call math.add(img, cam.red, cam.green)
+call math.add(img, img, cam.blue)
+call math.stat(img, minV, maxV, meanV)
+threshold = (3 * meanV + minV) / 4
+
+minPos = 0
+minCount = 0
+blackCount = 0
 i = 0
 while i &lt; 60 do
-	v = camR[i] + camG[i] + camB[i]
-	if v &lt;= threshold then
+	if img[i] &lt;= threshold then
 		minPos = minPos + i
 		minCount = minCount + 1
-		lastBlack = i
-		if firstBlack == -1 then
-			firstBlack = i
-		end
+		blackCount ++
 	end
 	i = i + 1
 end
 
-var deltaPos = 30
-var deltaDist = 0
+deltaPos = 30
 if minCount > 0 then
 	deltaPos = 30 - (minPos / minCount)
-	deltaDist = 10 - (lastBlack - firstBlack)
 end
+blackCount -= 30
 
-if deltaDist > 0 then
-	deltaDist = deltaDist * 2
-end
-leftSpeed = deltaPos * 4 + deltaDist * 8
-rightSpeed = -deltaPos * 4 + deltaDist * 8</node>
+emit out [deltaPos, blackCount]
+speed.left = -deltaPos * 8 - blackCount * 12
+speed.right = deltaPos * 8 - blackCount * 12</node>
+
+
 </network>

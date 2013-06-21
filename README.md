@@ -38,33 +38,33 @@ Then configure the following settings (examples given for xc16 compiler):
 Then add the files:
 
 from Aseba:
- - vm/vm.c
- - vm/natives.c
- - transport/buffer/vm-buffer.c
+ - `vm/vm.c`
+ - `vm/natives.c`
+ - `transport/buffer/vm-buffer.c`
  
 from e-puck library:
- - a_d/advance_ad_scan/e_acc.c
- - a_d/e_ad_conv.c
- - a_d/advance_ad_scan/e_ad_conv.c
- - a_d/advance_ad_scan/e_prox.c
- - camera/fast_2_timers/e_common.c
- - camera/fast_2_timers/e_calc_po3030k.c
- - camera/fast_2_timers/e_po3030k_registers.c
- - camera/fast_2_timers/e_calc_po6030k.c
- - camera/fast_2_timers/e_po6030k_registers.c
- - camera/fast_2_timers/e_interrupt.s
- - camera/fast_2_timers/e_timers.c
- - I2C/e_I2C_master_module.c
- - I2C/e_I2C_protocol.c
- - motor_led/e_init_port.c
- - motor_led/advance_one_timer/e_agenda.c
- - motor_led/advance_one_timer/e_led.c
- - motor_led/advance_one_timer/e_motors.c
- - uart/e_init_uart1.s
- - uart/e_uart1_rx_char.s
- - uart/e_uart1_tx_char.s
+ - `a_d/advance_ad_scan/e_acc.c`
+ - `a_d/e_ad_conv.c`
+ - `a_d/advance_ad_scan/e_ad_conv.c`
+ - `a_d/advance_ad_scan/e_prox.c`
+ - `camera/fast_2_timers/e_common.c`
+ - `camera/fast_2_timers/e_calc_po3030k.c`
+ - `camera/fast_2_timers/e_po3030k_registers.c`
+ - `camera/fast_2_timers/e_calc_po6030k.c`
+ - `camera/fast_2_timers/e_po6030k_registers.c`
+ - `camera/fast_2_timers/e_interrupt.s`
+ - `camera/fast_2_timers/e_timers.c`
+ - `I2C/e_I2C_master_module.c`
+ - `I2C/e_I2C_protocol.c`
+ - `motor_led/e_init_port.c`
+ - `motor_led/advance_one_timer/e_agenda.c`
+ - `motor_led/advance_one_timer/e_led.c`
+ - `motor_led/advance_one_timer/e_motors.c`
+ - `uart/e_init_uart1.s`
+ - `uart/e_uart1_rx_char.s`
+ - `uart/e_uart1_tx_char.s`
  
 then finally:
- - epuckaseba.c
+ - `epuckaseba.c`
 
  

@@ -1,37 +1,36 @@
 <!DOCTYPE aesl-source>
 <network>
-    <event name="start" />
-    <event name="stop" />
-    <node name="e-puck 2" >var run = 0
+
+
+<!--list of global events-->
+<event size="0" name="start"/>
+<event size="0" name="stop"/>
+
+
+<!--list of constants-->
+
+
+<!--show keywords state-->
+<keywords flag="true"/>
+
+
+<!--node e-puck0-->
+<node nodeId="1" name="e-puck0">var run = 0
 
 onevent start
 run = 1
 
 onevent stop
 run = 0
-leftSpeed = 0
-rightSpeed = 0
+speed.left = 0
+speed.right = 0
 
-ontimer
+onevent ir_sensors
 if run == 1 then
-	leftSpeed = 2000 - prox[1]*4 - prox[0]
-	rightSpeed = 2000 - prox[6]*4 - prox[7]
+	speed.left = 2000 - prox[1]*4 - prox[0]
+	speed.right = 2000 - prox[6]*4 - prox[7]
 end
 </node>
-    <node name="e-puck 1" >var run = 0
 
-onevent start
-run = 1
 
-onevent stop
-run = 0
-leftSpeed = 0
-rightSpeed = 0
-
-ontimer
-if run == 1 then
-	leftSpeed = 2000 - prox[1]*4 - prox[0]
-	rightSpeed = 2000 - prox[6]*4 - prox[7]
-end
-</node>
 </network>
