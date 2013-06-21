@@ -11,9 +11,13 @@ You need the following to compile this firmware:
  - Aseba (https://github.com/aseba-community/aseba)
  - A compiler for dsPIC, pic30-elf-gcc or MPLAB X (http://www.microchip.com/mplabx/)
 
-You have to change the size of the UART 1 e-puck reception buffer to hold the largest possible packet (probably bytecode + header). Otherwise if you set a new bytecode while busy (for instance while sending description), you might end up in a dead-lock. To do so, edit `e_uart1_rx_char.s`, and change `U1RXBuf` to something like `530`:
+You have to change the size of the UART 1 e-puck reception buffer to hold the largest possible packet (probably bytecode + header).
+Otherwise if you set a new bytecode while busy (for instance while sending description), you might end up in a dead-lock.
+To do so, edit `e_uart1_rx_char.s`, and change `U1RXBuf` to something like `1024` and update masks accordingly:
 
-	_U1RXBuf: .space 530
+	`e_uart1_rx_char.s:28	_U1RXBuf: .space 1024`
+	`e_uart1_rx_char.s:57	and		#0x3ff, w0`
+	`e_uart1_rx_char.s:86	and		#0x3ff, w2`
 
 Now, there are two ways to build:
 
@@ -28,7 +32,7 @@ Use MPLAB X
 If you use MPLAB X IDE, create a new project, set to CPU 30F6014A.
 
 Then configure the following settings (examples given for xc16 compiler):
- - 512 bytes of heap (Project settings -> xc16-ld -> Heap size: 512)
+ - 64 bytes of heap (Project settings -> xc16-ld -> Heap size: 64)
  - large memory model (Project settings -> xc16-gcc -> Memory model -> Data Model: Large)
 
 Then add the files:
