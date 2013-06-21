@@ -25,7 +25,7 @@
 	in a dead-lock.
 */
 
-#include <p30f6014a.h>
+#include <p30F6014A.h>
 
 #include "e-puck/library/motor_led/e_epuck_ports.h"
 #include "e-puck/library/motor_led/e_init_port.h"
@@ -45,8 +45,9 @@
 #include <string.h>
 
 #define ASEBA_ASSERT
-#include <vm/vm.h>
 #include <common/consts.h>
+#include <common/productids.h>
+#include <vm/vm.h>
 #include <vm/natives.h>
 #include <transport/buffer/vm-buffer.h>
 
@@ -95,6 +96,8 @@ struct EPuckVariables
 	sint16 source;
 	// args
 	sint16 args[argsSize];
+	// product id
+	sint16 productId;
 	// motor
 	sint16 leftSpeed;
 	sint16 rightSpeed;
@@ -122,8 +125,9 @@ AsebaVMDescription vmDescription = {
 		{ 1, "id" },	// Do not touch it
 		{ 1, "source" }, // nor this one
 		{ argsSize, "args" },	// neither this one
-		{1, "leftSpeed"},
-		{1, "rightSpeed"},
+		{ 1, ASEBA_PID_VAR_NAME },
+		{1, "speed.left"},
+		{1, "speed.right"},
 	// leds
 		{8, "leds"},
 	// prox
@@ -132,10 +136,10 @@ AsebaVMDescription vmDescription = {
 	// acc
 		{3, "acc"},
 	// camera
-		{1, "camLine"},
-		{60, "camR"},
-		{60, "camG"},
-		{60, "camB"},
+		{1, "cam.line"},
+		{60, "cam.red"},
+		{60, "cam.green"},
+		{60, "cam.blue"},
 		
 		{ 0, NULL }	// null terminated
 	}
@@ -164,8 +168,6 @@ const AsebaVMDescription* AsebaGetVMDescription(AsebaVMState *vm)
 }	
 
 
-
-
 static unsigned int events_flags = 0;
 enum Events
 {
@@ -175,8 +177,8 @@ enum Events
 };
 
 static const AsebaLocalEventDescription localEvents[] = { 
-	{"ir_sensors", "New IR sensors values available"},
-	{"camera", "New camera picture available"},
+	{"ir_sensors", "IR sensors updated"},
+	{"camera", "camera updated"},
 	{ NULL, NULL }
 };
 
@@ -184,6 +186,7 @@ const AsebaLocalEventDescription * AsebaGetLocalEventsDescriptions(AsebaVMState 
 {
 	return localEvents;
 }
+
 
 #ifdef LIS_GROUND_SENSORS 
 void EpuckNative_get_ground_values(AsebaVMState *vm)
@@ -205,7 +208,7 @@ void EpuckNative_get_ground_values(AsebaVMState *vm)
 
 AsebaNativeFunctionDescription EpuckNativeDescription_get_ground_values =
 {
-	"get_ground_values",
+	"ground.get_values",
 	"read the values of the ground sensors",
 	{
 		{ 3, "dest" },
@@ -214,11 +217,72 @@ AsebaNativeFunctionDescription EpuckNativeDescription_get_ground_values =
 };
 #endif
 
+void EpuckNative_set_awb_ae(AsebaVMState *vm)
+{
+    uint16 awb = AsebaNativePopArg(vm);
+    uint16 ae = AsebaNativePopArg(vm);
+    e_poxxxx_set_awb_ae(vm->variables[awb], vm->variables[ae]);
+    e_poxxxx_write_cam_registers();
+}
+
+AsebaNativeFunctionDescription EpuckNativeDescription_set_awb_ae =
+{
+	"cam.set_awb_ae",
+	"enable (1)/disable (0) the automatic white balance and exposure",
+	{
+		{ 1, "awb" },
+		{ 1, "ae" },
+		{ 0, 0 }
+	}
+};
+
+void EpuckNative_set_exposure(AsebaVMState *vm)
+{
+	uint16 e = AsebaNativePopArg(vm);
+	unsigned long _e = ((unsigned long)vm->variables[e]) << 8;
+	e_poxxxx_set_exposure(_e);
+	e_poxxxx_write_cam_registers();
+}
+
+AsebaNativeFunctionDescription EpuckNativeDescription_set_exposure =
+{
+	"cam.set_exposure",
+	"set the camera exposure",
+	{
+		{ 1, "exposure" },
+		{ 0, 0 }
+	}
+};
+
+void EpuckNative_set_rgb_gain(AsebaVMState *vm)
+{
+	uint16 r = AsebaNativePopArg(vm);
+	uint16 g = AsebaNativePopArg(vm);
+	uint16 b = AsebaNativePopArg(vm);
+	e_poxxxx_set_rgb_gain(vm->variables[r], vm->variables[g], vm->variables[b]);
+	e_poxxxx_write_cam_registers();
+}
+
+AsebaNativeFunctionDescription EpuckNativeDescription_set_rgb_gain =
+{
+	"cam.set_rgb_gain",
+	"set the camera r/g/b gain",
+	{
+		{ 1, "red_gain" },
+		{ 1, "green_gain" },
+		{ 1, "blue_gain" },
+		{ 0, 0 }
+	}
+};
+
 static const AsebaNativeFunctionDescription* nativeFunctionsDescription[] = {
 	ASEBA_NATIVES_STD_DESCRIPTIONS,
 #ifdef LIS_GROUND_SENSORS
 	&EpuckNativeDescription_get_ground_values,
 #endif
+	&EpuckNativeDescription_set_awb_ae,
+	&EpuckNativeDescription_set_exposure,
+	&EpuckNativeDescription_set_rgb_gain,
 	0	// null terminated
 };
 
@@ -227,6 +291,9 @@ static AsebaNativeFunctionPointer nativeFunctions[] = {
 #ifdef LIS_GROUND_SENSORS
 	EpuckNative_get_ground_values,
 #endif
+	EpuckNative_set_awb_ae,
+	EpuckNative_set_exposure,
+	EpuckNative_set_rgb_gain
 };
 
 void AsebaPutVmToSleep(AsebaVMState *vm)
@@ -283,7 +350,7 @@ uint16 uartGetUInt16()
 
 uint16 AsebaGetBuffer(AsebaVMState *vm, uint8* data, uint16 maxLength, uint16* source)
 {
-	BODY_LED = 1;
+	//BODY_LED = 1;
 	uint16 ret = 0;
 	if (e_ischar_uart1())
 	{
@@ -295,16 +362,35 @@ uint16 AsebaGetBuffer(AsebaVMState *vm, uint8* data, uint16 maxLength, uint16* s
 			*data++ = uartGetUInt8();
 		ret = len;
 	}
-	BODY_LED = 0;
+	//BODY_LED = 0;
 	return ret;
-}	
+}
+
+void setCamLine(int line)
+{
+	int _camLine;
+	if (line < 0)
+		line = 0;
+	if (line >= 100)
+		line = 99;
+	switch(e_poxxxx_get_orientation()) {
+		case 0:
+			_camLine = (line * 32) / 5;
+			e_poxxxx_config_cam(_camLine,0,4,480,4,8,RGB_565_MODE);
+			break;
+		default:
+			_camLine = (line * 24) / 5;
+			e_poxxxx_config_cam(80,_camLine,480,4,8,4,RGB_565_MODE);
+			break;
+	}
+}
 
 
 extern int e_ambient_and_reflected_ir[8];
 void updateRobotVariables()
 {
 	unsigned i;
-	static int camline = 640/2-4;
+	static int camline = 50;
 	// motor
 	static int leftSpeed = 0, rightSpeed = 0;
 
@@ -347,7 +433,7 @@ void updateRobotVariables()
 		if(camline != ePuckVariables.camLine)
 		{
 			camline = ePuckVariables.camLine;
-			e_poxxxx_config_cam(camline,0,4,480,4,8,RGB_565_MODE);
+			setCamLine(camline);
 		//	e_po3030k_set_ref_exposure(160);
 		//	e_po3030k_set_ww(0);
 			e_poxxxx_set_mirror(1,1);
@@ -375,7 +461,7 @@ void initRobot()
 	e_init_uart1();
 	e_init_ad_scan(0);
 	e_poxxxx_init_cam();
-	e_poxxxx_config_cam(640/2-4,0,4,480,4,8,RGB_565_MODE);
+	setCamLine(50);
 //	e_po3030k_set_ref_exposure(160);
 //	e_po3030k_set_ww(0);
 	e_poxxxx_set_mirror(1,1);
@@ -428,14 +514,15 @@ void initAseba()
 	vmState.nodeId = selector + 1;
 	AsebaVMInit(&vmState);
 	ePuckVariables.id = selector + 1;
-	ePuckVariables.camLine = 640/2-4;
+        ePuckVariables.productId = ASEBA_PID_EPUCK;
+	ePuckVariables.camLine = 50;
 	name[6] = '0' + selector;
 	e_led_clear();
 	e_set_led(selector,1);
 }
 
 int main()
-{	
+{
 	int i;
 	_prog_addressT EE_addr;
 	
@@ -469,12 +556,12 @@ int main()
 		}
 		
 		// Init the vm
-		AsebaVMSetupEvent(&vmState, ASEBA_EVENT_INIT);	
+		AsebaVMSetupEvent(&vmState, ASEBA_EVENT_INIT);
 	}
 	
 	while (1)
 	{
-		AsebaProcessIncomingEvents(&vmState);		
+		AsebaProcessIncomingEvents(&vmState);
 		updateRobotVariables();
 		AsebaVMRun(&vmState, 1000);
 		

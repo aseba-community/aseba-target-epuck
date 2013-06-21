@@ -1,10 +1,11 @@
-EPUCKLIBROOT = /home/nct/data/epfl-lsro/e-puck/library
+#EPUCKLIBROOT = where is your e-puck library
+#ASEBAROOT = where is Aseba
 PIC30SUPPORTROOT = /usr/share/pic30-support
 
 SRC = epuckaseba.c
 TARGET_HEX = epuckaseba.hex
 TARGET_ELF = epuckaseba.elf
-INC = ../../vm/vm.h ../../common/consts.h
+INC = ${ASEBAROOT}/common/vm/vm.h ${ASEBAROOT}/common/consts.h
 OBJ = $(patsubst %.c,%.o,$(SRC))
 
 CFLAGS +=-g -Wall -mcpu=30F6014A \
