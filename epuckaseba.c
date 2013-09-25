@@ -51,7 +51,7 @@
 #include <vm/natives.h>
 #include <transport/buffer/vm-buffer.h>
 
-#define LIS_GROUND_SENSORS
+//#define LIS_GROUND_SENSORS
 
 #define vmVariablesSize (sizeof(struct EPuckVariables) / sizeof(sint16))
 #define vmStackSize 32
@@ -329,7 +329,7 @@ void AsebaSendBuffer(AsebaVMState *vm, const uint8* data, uint16 length)
 	uint16 i;
 	for (i = 0; i < length; i++)
 		uartSendUInt8(*data++);
-}	
+}
 
 uint8 uartGetUInt8()
 {
@@ -405,9 +405,7 @@ void updateRobotVariables()
 		e_set_speed_right(rightSpeed);
 	}
 	
-	
 	if(e_ambient_and_reflected_ir[7] != 0xFFFF) {
-		SET_EVENT(EVENT_IR_SENSORS); 
 		// leds and prox
 		for (i = 0; i < 8; i++)
 		{
@@ -416,13 +414,14 @@ void updateRobotVariables()
 			ePuckVariables.prox[i] =  e_get_calibrated_prox(i);
 		}
 		e_ambient_and_reflected_ir[7] = 0xFFFF;
+		SET_EVENT(EVENT_IR_SENSORS);
 	}
 	
 	for(i = 0; i < 3; i++)
 		ePuckVariables.acc[i] = e_get_acc(i);
 
 	// camera
-	if(e_poxxxx_is_img_ready())	
+	if(e_poxxxx_is_img_ready())
 	{
 		for(i = 0; i < 60; i++)
 		{
@@ -557,12 +556,13 @@ int main()
 		
 		// Init the vm
 		AsebaVMSetupEvent(&vmState, ASEBA_EVENT_INIT);
+		AsebaVMRun(&vmState, 1000);
 	}
 	
 	while (1)
 	{
-		AsebaProcessIncomingEvents(&vmState);
 		updateRobotVariables();
+		AsebaProcessIncomingEvents(&vmState);
 		AsebaVMRun(&vmState, 1000);
 		
 		if (AsebaMaskIsClear(vmState.flags, ASEBA_VM_STEP_BY_STEP_MASK) || AsebaMaskIsClear(vmState.flags, ASEBA_VM_EVENT_ACTIVE_MASK))
@@ -576,6 +576,7 @@ int main()
 				CLEAR_EVENT(i);
 				ePuckVariables.source = vmState.nodeId;
 				AsebaVMSetupEvent(&vmState, ASEBA_EVENT_LOCAL_EVENTS_START - i);
+				AsebaVMRun(&vmState, 1000);
 			}
 		}
 	}
