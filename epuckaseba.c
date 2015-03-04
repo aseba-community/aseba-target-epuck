@@ -27,17 +27,17 @@
 
 #include <p30F6014A.h>
 
-#include "e-puck/library/motor_led/e_epuck_ports.h"
-#include "e-puck/library/motor_led/e_init_port.h"
-#include "e-puck/library/motor_led/e_led.h"
-#include "e-puck/library/motor_led/advance_one_timer/e_motors.h"
-#include "e-puck/library/motor_led/advance_one_timer/e_agenda.h"
-#include "e-puck/library/camera/fast_2_timer/e_poxxxx.h"
-#include "e-puck/library/uart/e_uart_char.h"
-#include "e-puck/library/a_d/advance_ad_scan/e_ad_conv.h"
-#include "e-puck/library/a_d/advance_ad_scan/e_prox.h"
-#include "e-puck/library/a_d/advance_ad_scan/e_acc.h"
-#include "e-puck/library/I2C/e_I2C_protocol.h"
+#include "motor_led/e_epuck_ports.h"
+#include "motor_led/e_init_port.h"
+#include "motor_led/e_led.h"
+#include "motor_led/advance_one_timer/e_motors.h"
+#include "motor_led/advance_one_timer/e_agenda.h"
+#include "camera/fast_2_timer/e_poxxxx.h"
+#include "uart/e_uart_char.h"
+#include "a_d/advance_ad_scan/e_ad_conv.h"
+#include "a_d/advance_ad_scan/e_prox.h"
+#include "a_d/advance_ad_scan/e_acc.h"
+#include "I2C/e_I2C_protocol.h"
 
 #include "libpic30.h"
 
@@ -51,7 +51,7 @@
 #include <vm/natives.h>
 #include <transport/buffer/vm-buffer.h>
 
-//#define LIS_GROUND_SENSORS
+#define LIS_GROUND_SENSORS
 
 #define vmVariablesSize (sizeof(struct EPuckVariables) / sizeof(sint16))
 #define vmStackSize 32
@@ -113,6 +113,10 @@ struct EPuckVariables
 	sint16 camR[60];
 	sint16 camG[60];
 	sint16 camB[60];
+        // gyro (only for e-puck 1.3)
+        sint16 gyro[3];
+        // battery (only for e-puck 1.3)
+        sint16 battery;
 	// free space
 	sint16 freeSpace[128];
 } __attribute__ ((far)) ePuckVariables;
@@ -140,6 +144,10 @@ AsebaVMDescription vmDescription = {
 		{60, "cam.red"},
 		{60, "cam.green"},
 		{60, "cam.blue"},
+       // gyro
+                {3, "gyro"},
+       // battery
+                {1, "battery"},
 		
 		{ 0, NULL }	// null terminated
 	}
@@ -441,6 +449,12 @@ void updateRobotVariables()
 		e_poxxxx_launch_capture((char *)cam_data);
 		SET_EVENT(EVENT_CAMERA);
 	}
+
+        // gyro
+        getAllAxesGyro(&ePuckVariables.gyro[0], &ePuckVariables.gyro[1], &ePuckVariables.gyro[2]);
+
+        // battery
+        ePuckVariables.battery = getBatteryValuePercentage();
 }
 
 
