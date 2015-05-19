@@ -479,7 +479,7 @@ void initRobot()
 //	e_po3030k_set_ww(0);
 	e_poxxxx_set_mirror(1,1);
 	e_poxxxx_write_cam_registers();
-	e_poxxxx_launch_capture((char *)cam_data);
+	//e_poxxxx_launch_capture((char *)cam_data);    // do not call here otherwise it was noticed that sometimes the robot starts in a strange manner
 
 	// reset if power on (some problem for few robots)
 	if (RCONbits.POR)
@@ -572,7 +572,9 @@ int main()
 		AsebaVMSetupEvent(&vmState, ASEBA_EVENT_INIT);
 		AsebaVMRun(&vmState, 1000);
 	}
-	
+
+	e_poxxxx_launch_capture((char *)cam_data);
+
 	while (1)
 	{
 		updateRobotVariables();
