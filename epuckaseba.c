@@ -113,13 +113,13 @@ struct EPuckVariables
 	sint16 camR[60];
 	sint16 camG[60];
 	sint16 camB[60];
-        // encoders
-        sint16 leftSteps;
-        sint16 rightSteps;
-        // gyro (only for e-puck 1.3)
-        sint16 gyro[3];
-        // battery (only for e-puck 1.3)
-        sint16 battery;
+	// encoders
+	sint16 leftSteps;
+	sint16 rightSteps;
+	// gyro (only for e-puck 1.3)
+	sint16 gyro[3];
+	// battery (only for e-puck 1.3)
+	sint16 battery;
 	// free space
 	sint16 freeSpace[128];
 } __attribute__ ((far)) ePuckVariables;
@@ -147,14 +147,13 @@ AsebaVMDescription vmDescription = {
 		{60, "cam.red"},
 		{60, "cam.green"},
 		{60, "cam.blue"},
-       // encoders
-                {1, "steps.left"},
+	// encoders
+		{1, "steps.left"},
 		{1, "steps.right"},
-       // gyro
-                {3, "gyro"},
-       // battery
-                {1, "battery"},
-		
+	// gyro
+		{3, "gyro"},
+	// battery
+		{1, "battery"},
 		{ 0, NULL }	// null terminated
 	}
 };
@@ -455,16 +454,17 @@ void updateRobotVariables()
 		e_poxxxx_launch_capture((char *)cam_data);
 		SET_EVENT(EVENT_CAMERA);
 	}
-
-        // encoders
-        ePuckVariables.leftSteps = e_get_steps_left();
-        ePuckVariables.rightSteps = e_get_steps_right();
-
-        // gyro
-        getAllAxesGyro(&ePuckVariables.gyro[0], &ePuckVariables.gyro[1], &ePuckVariables.gyro[2]);
-
-        // battery
-        ePuckVariables.battery = getBatteryValuePercentage();
+	
+	// encoders
+	ePuckVariables.leftSteps = e_get_steps_left();
+	ePuckVariables.rightSteps = e_get_steps_right();
+	
+	// gyro
+	getAllAxesGyro(&ePuckVariables.gyro[0], &ePuckVariables.gyro[1], &ePuckVariables.gyro[2]);
+	
+	// battery
+	ePuckVariables.battery = getBatteryValuePercentage();
+	
 }
 
 
