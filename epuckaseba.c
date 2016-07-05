@@ -27,16 +27,20 @@
 
 #include <p30F6014A.h>
 
+#include "utility/utility.h"
+#include "acc_gyro/e_lsm330.h"
 #include "motor_led/e_epuck_ports.h"
 #include "motor_led/e_init_port.h"
 #include "motor_led/e_led.h"
 #include "motor_led/advance_one_timer/e_motors.h"
 #include "motor_led/advance_one_timer/e_agenda.h"
+#include "motor_led/advance_one_timer/e_remote_control.h"
 #include "camera/fast_2_timer/e_poxxxx.h"
 #include "uart/e_uart_char.h"
 #include "a_d/advance_ad_scan/e_ad_conv.h"
 #include "a_d/advance_ad_scan/e_prox.h"
 #include "a_d/advance_ad_scan/e_acc.h"
+#include "a_d/advance_ad_scan/e_micro.h"
 #include "I2C/e_I2C_protocol.h"
 
 #include "libpic30.h"
@@ -87,6 +91,8 @@ unsigned int __attribute((far)) cam_data[60];
 
 int _EEDATA(1) bytecode_version;
 unsigned char _EEDATA(1) eeprom_bytecode[VM_BYTECODE_SIZE*2];
+float lastTick;
+signed char commError;
 
 struct EPuckVariables
 {
@@ -102,7 +108,7 @@ struct EPuckVariables
 	sint16 leftSpeed;
 	sint16 rightSpeed;
 	// leds
-	sint16 leds[8];
+	sint16 leds[10];
 	// prox
 	sint16 prox[8];
 	sint16 ambiant[8];
@@ -116,10 +122,18 @@ struct EPuckVariables
 	// encoders
 	sint16 leftSteps;
 	sint16 rightSteps;
+	// microphone
+	sint16 mic[3];
+	// selector
+	sint16 selector;
+	// tv remote
+	sint16 tvRemote;
+	// timer
+	sint16 timer;
+	// battery (percentage for e-puck 1.3, state for e-puck <= 1.2)
+	sint16 battery;
 	// gyro (only for e-puck 1.3)
 	sint16 gyro[3];
-	// battery (only for e-puck 1.3)
-	sint16 battery;
 	// free space
 	sint16 freeSpace[128];
 } __attribute__ ((far)) ePuckVariables;
@@ -136,7 +150,7 @@ AsebaVMDescription vmDescription = {
 		{1, "speed.left"},
 		{1, "speed.right"},
 	// leds
-		{8, "leds"},
+		{10, "leds"},
 	// prox
 	    {8, "prox"},
 		{8, "ambiant"},
@@ -150,10 +164,18 @@ AsebaVMDescription vmDescription = {
 	// encoders
 		{1, "steps.left"},
 		{1, "steps.right"},
-	// gyro
-		{3, "gyro"},
+	// mic
+		{3, "mic"},
+	// sel
+		{1, "sel"},
+	// tv remote
+		{1, "rc5"},
+	// timer
+		{1, "timer.period"},
 	// battery
 		{1, "battery"},
+	// gyro
+		{3, "gyro"},
 		{ 0, NULL }	// null terminated
 	}
 };
@@ -186,12 +208,16 @@ enum Events
 {
 	EVENT_IR_SENSORS = 0,
 	EVENT_CAMERA,
+	EVENT_SELECTOR,
+	EVENT_TIMER,
 	EVENTS_COUNT
 };
 
 static const AsebaLocalEventDescription localEvents[] = { 
 	{"ir_sensors", "IR sensors updated"},
 	{"camera", "camera updated"},
+	{"sel", "Selector status changed"},
+	{"timer", "Timer"},
 	{ NULL, NULL }
 };
 
@@ -347,7 +373,14 @@ void AsebaSendBuffer(AsebaVMState *vm, const uint8* data, uint16 length)
 uint8 uartGetUInt8()
 {
 	char c;
-	while (!e_ischar_uart1());
+	commError = 0;
+	getDiffTimeMsAndReset();
+	while (!e_ischar_uart1()) {
+		if(getDiffTimeMs() > 500) { // Timeout of 500 ms.
+			commError = 1;
+			return 0;
+		}
+	}
 	e_getchar_uart1(&c);
 	return c;
 }
@@ -357,7 +390,13 @@ uint16 uartGetUInt16()
 	uint16 value;
 	// little endian
 	value = uartGetUInt8();
+	if(commError) {
+		return 0;
+	}
 	value |= (uartGetUInt8() << 8);
+	if(commError) {
+		return 0;
+	}
 	return value;
 }
 
@@ -368,11 +407,23 @@ uint16 AsebaGetBuffer(AsebaVMState *vm, uint8* data, uint16 maxLength, uint16* s
 	if (e_ischar_uart1())
 	{
 		uint16 len = uartGetUInt16() + 2;
+		if(commError) {
+			return 0;
+		}
+		if(len > maxLength) { // Wrong data received.
+			return 0;
+		}
 		*source = uartGetUInt16();
-	
+		if(commError) {
+			return 0;
+		}
 		uint16 i;
-		for (i = 0; i < len; i++)
+		for (i = 0; i < len; i++) {
 			*data++ = uartGetUInt8();
+			if(commError) {
+				return 0;
+			}
+		}
 		ret = len;
 	}
 	//BODY_LED = 0;
@@ -406,6 +457,7 @@ void updateRobotVariables()
 	static int camline = 50;
 	// motor
 	static int leftSpeed = 0, rightSpeed = 0;
+	static char selectorState = -1;
 
 	if (ePuckVariables.leftSpeed != leftSpeed)
 	{
@@ -427,11 +479,15 @@ void updateRobotVariables()
 			ePuckVariables.prox[i] =  e_get_calibrated_prox(i);
 		}
 		e_ambient_and_reflected_ir[7] = 0xFFFF;
+		e_set_body_led(ePuckVariables.leds[8] ? 1 : 0);
+		e_set_front_led(ePuckVariables.leds[9] ? 1 : 0);
 		SET_EVENT(EVENT_IR_SENSORS);
 	}
 	
-	for(i = 0; i < 3; i++)
+	for(i = 0; i < 3; i++) {
 		ePuckVariables.acc[i] = e_get_acc(i);
+		ePuckVariables.mic[i] = e_get_micro_volume(i);
+	}
 
 	// camera
 	if(e_poxxxx_is_img_ready())
@@ -463,8 +519,27 @@ void updateRobotVariables()
 	getAllAxesGyro(&ePuckVariables.gyro[0], &ePuckVariables.gyro[1], &ePuckVariables.gyro[2]);
 	
 	// battery
-	ePuckVariables.battery = getBatteryValuePercentage();
+	if (isEpuckVersion1_3()) {
+		ePuckVariables.battery = getBatteryValuePercentage();
+	} else {
+		ePuckVariables.battery = BATT_LOW; // BATT_LOW=1 => battery ok, BATT_LOW=0 => battery<3.4V
+	}
 	
+	ePuckVariables.selector = getselector();
+	if(selectorState != ePuckVariables.selector) {
+		SET_EVENT(EVENT_SELECTOR);
+	}
+	selectorState = ePuckVariables.selector;
+	
+	ePuckVariables.tvRemote = e_get_data();
+
+	if(ePuckVariables.timer > 0) {
+		if(getDiffTimeMs() >= ePuckVariables.timer) {	// About 1 ms resolution.
+			getDiffTimeMsAndReset();
+			SET_EVENT(EVENT_TIMER);                
+		}
+	}
+
 }
 
 
@@ -482,6 +557,7 @@ void initRobot()
 	e_start_agendas_processing();
 	e_init_motors();
 	e_init_uart1();
+	e_init_remote_control();
 	e_init_ad_scan(0);
 	e_poxxxx_init_cam();
 	setCamLine(50);
@@ -537,11 +613,11 @@ void initAseba()
 	vmState.nodeId = selector + 1;
 	AsebaVMInit(&vmState);
 	ePuckVariables.id = selector + 1;
-        ePuckVariables.productId = ASEBA_PID_EPUCK;
+	ePuckVariables.productId = ASEBA_PID_EPUCK;
 	ePuckVariables.camLine = 50;
 	name[6] = '0' + selector;
 	e_led_clear();
-	e_set_led(selector,1);
+	//e_set_led(selector,1);
 }
 
 int main()
