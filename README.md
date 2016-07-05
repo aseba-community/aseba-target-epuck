@@ -43,7 +43,9 @@ from Aseba:
  - `transport/buffer/vm-buffer.c`
  
 from e-puck library:
+ - `acc_gyro/e_lsm330.c`
  - `a_d/advance_ad_scan/e_acc.c`
+ - `a_d/advance_ad_scan/e_micro.c`
  - `a_d/e_ad_conv.c`
  - `a_d/advance_ad_scan/e_ad_conv.c`
  - `a_d/advance_ad_scan/e_prox.c`
@@ -52,6 +54,8 @@ from e-puck library:
  - `camera/fast_2_timers/e_po3030k_registers.c`
  - `camera/fast_2_timers/e_calc_po6030k.c`
  - `camera/fast_2_timers/e_po6030k_registers.c`
+ - `camera/fast_2_timers/e_calc_po8030d.c`
+ - `camera/fast_2_timers/e_po8030d_registers.c` 
  - `camera/fast_2_timers/e_interrupt.s`
  - `camera/fast_2_timers/e_timers.c`
  - `I2C/e_I2C_master_module.c`
@@ -60,9 +64,11 @@ from e-puck library:
  - `motor_led/advance_one_timer/e_agenda.c`
  - `motor_led/advance_one_timer/e_led.c`
  - `motor_led/advance_one_timer/e_motors.c`
+ - `motor_led/advance_one_timer/e_remote_control.c`
  - `uart/e_init_uart1.s`
  - `uart/e_uart1_rx_char.s`
  - `uart/e_uart1_tx_char.s`
+ - `utility/utility.c`
  
 then finally:
  - `epuckaseba.c`
